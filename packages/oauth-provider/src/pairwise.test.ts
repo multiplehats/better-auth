@@ -11,7 +11,9 @@ import { decodeJwt } from "jose";
 import { beforeAll, describe, expect, it } from "vitest";
 import { oauthProviderClient } from "./client";
 import { oauthProvider } from "./oauth";
+import type { OAuthOptions, SchemaClient, Scope } from "./types";
 import type { OAuthClient } from "./types/oauth";
+import { resolveSubjectIdentifier } from "./utils";
 
 describe("pairwise subject identifiers", async () => {
 	const authServerBaseUrl = "http://localhost:3000";
@@ -542,5 +544,59 @@ describe("pairwise metadata", async () => {
 
 		const metadata = await auth.api.getOpenIdConfig();
 		expect(metadata.subject_types_supported).toEqual(["public"]);
+	});
+});
+
+/**
+ * A private-use URI scheme is not bound to the host in its authority, so that
+ * host cannot identify a sector shared with an HTTPS client.
+ *
+ * @see https://openid.net/specs/openid-connect-core-1_0.html#PairwiseAlg
+ */
+describe("pairwise sector for custom-scheme redirect URIs", () => {
+	const opts: OAuthOptions<Scope[]> = {
+		loginPage: "/login",
+		consentPage: "/consent",
+		pairwiseSecret: "test-pairwise-secret-key-32chars!!",
+	};
+	const pairwiseClient = (
+		clientId: string,
+		redirectUris: string[],
+	): SchemaClient<Scope[]> => ({
+		clientId,
+		redirectUris,
+		subjectType: "pairwise",
+	});
+	const sub = (client: SchemaClient<Scope[]>) =>
+		resolveSubjectIdentifier("user-1", client, opts);
+
+	it("does not share an HTTPS client's sector through a custom scheme on the same host", async () => {
+		const web = pairwiseClient("web", ["https://rp.example.com/callback"]);
+		const app = pairwiseClient("app", ["app://rp.example.com/callback"]);
+		expect(await sub(app)).not.toBe(await sub(web));
+	});
+
+	it("uses a client-specific sector when any redirect URI is a custom scheme with a host", async () => {
+		const web = pairwiseClient("web", ["https://rp.example.com/callback"]);
+		const mixed = pairwiseClient("mixed", [
+			"https://rp.example.com/callback",
+			"app://rp.example.com/callback",
+		]);
+		const otherApp = pairwiseClient("other", ["app://rp.example.com/callback"]);
+		expect(await sub(mixed)).not.toBe(await sub(web));
+		expect(await sub(otherApp)).not.toBe(
+			await sub(pairwiseClient("app", ["app://rp.example.com/callback"])),
+		);
+	});
+
+	it("keeps the same sub for a custom-scheme client across calls", async () => {
+		const app = pairwiseClient("app", ["app://rp.example.com/callback"]);
+		expect(await sub(app)).toBe(await sub(app));
+	});
+
+	it("still shares a sector between HTTPS clients on the same host", async () => {
+		const a = pairwiseClient("a", ["https://rp.example.com/a"]);
+		const b = pairwiseClient("b", ["https://rp.example.com/b"]);
+		expect(await sub(a)).toBe(await sub(b));
 	});
 });

@@ -991,8 +991,25 @@ export function parsePrompt(prompt: string) {
 	return new Set(set);
 }
 
+function isCustomSchemeWithHost(uri: string): boolean {
+	let url: URL;
+	try {
+		url = new URL(uri);
+	} catch {
+		return false;
+	}
+	return (
+		url.protocol !== "http:" && url.protocol !== "https:" && url.host !== ""
+	);
+}
+
 /**
  * Extracts the sector identifier (hostname) from a client's first redirect URI.
+ *
+ * Any app can register a custom URI scheme, so the host in a URI such as
+ * `app://rp.example.com/callback` proves nothing about who controls
+ * `rp.example.com`. A client with such a redirect URI gets a sector of its
+ * own. `/` cannot appear in a URL host, so this sector never equals one.
  *
  * @see https://openid.net/specs/openid-connect-core-1_0.html#PairwiseAlg
  * @internal
@@ -1003,6 +1020,9 @@ function getSectorIdentifier(client: SchemaClient<Scope[]>): string {
 		throw new BetterAuthError(
 			"Client has no redirect URIs for sector identifier",
 		);
+	}
+	if (client.redirectUris?.some(isCustomSchemeWithHost)) {
+		return `client/${client.clientId}`;
 	}
 	return new URL(uri).host;
 }

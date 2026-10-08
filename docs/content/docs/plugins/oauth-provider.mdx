@@ -1866,6 +1866,7 @@ Pairwise identifiers are computed using HMAC-SHA256 over the **sector identifier
 
 * Two clients with different redirect URI hosts always receive different `sub` values for the same user
 * Two clients sharing the same redirect URI host receive the **same** pairwise `sub` (per OIDC Core Section 8.1)
+* A client with any custom-scheme redirect URI that includes a host, such as `app://rp.example.com/callback`, gets a sector of its own and shares its `sub` with no other client. Any app can register a custom scheme, so the host in that URI does not show who controls `rp.example.com`.
 * The same client always receives the same `sub` for the same user (deterministic)
 
 Pairwise `sub` appears in:
