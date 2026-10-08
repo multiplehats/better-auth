@@ -1862,11 +1862,11 @@ const response = await auth.api.createOAuthClient({
 
 #### How It Works
 
-Pairwise identifiers are computed using HMAC-SHA256 over the **sector identifier** (the host of the client's first redirect URI) and the user ID, keyed with `pairwiseSecret`. This means:
+Pairwise identifiers are computed using HMAC-SHA256 over the **sector identifier** and the user ID, keyed with `pairwiseSecret`. The sector identifier is the host of the client's first redirect URI, unless any of the client's redirect URIs is a custom scheme with a host, such as `app://rp.example.com/callback`. Any app can register a custom scheme, so that host does not show who controls `rp.example.com`, and the client gets a sector of its own instead. This means:
 
-* Two clients with different redirect URI hosts always receive different `sub` values for the same user
-* Two clients sharing the same redirect URI host receive the **same** pairwise `sub` (per OIDC Core Section 8.1)
-* A client with any custom-scheme redirect URI that includes a host, such as `app://rp.example.com/callback`, gets a sector of its own and shares its `sub` with no other client. Any app can register a custom scheme, so the host in that URI does not show who controls `rp.example.com`.
+* Two clients with different sectors always receive different `sub` values for the same user
+* Two clients sharing a sector receive the **same** pairwise `sub` (per OIDC Core Section 8.1). Clients whose redirect URIs share an `https` host share a sector.
+* A client with a custom-scheme redirect URI that includes a host shares its `sub` with no other client, wherever that URI appears in its `redirect_uris`
 * The same client always receives the same `sub` for the same user (deterministic)
 
 Pairwise `sub` appears in:

@@ -1004,12 +1004,14 @@ function isCustomSchemeWithHost(uri: string): boolean {
 }
 
 /**
- * Extracts the sector identifier (hostname) from a client's first redirect URI.
+ * Returns the sector identifier: the host of the client's first redirect URI,
+ * unless any of its redirect URIs is a custom scheme with a host.
  *
  * Any app can register a custom URI scheme, so the host in a URI such as
  * `app://rp.example.com/callback` proves nothing about who controls
- * `rp.example.com`. A client with such a redirect URI gets a sector of its
- * own. `/` cannot appear in a URL host, so this sector never equals one.
+ * `rp.example.com`. A client with such a redirect URI, in any position, gets
+ * a sector of its own. `/` cannot appear in a URL host, so this sector never
+ * equals one.
  *
  * @see https://openid.net/specs/openid-connect-core-1_0.html#PairwiseAlg
  * @internal
